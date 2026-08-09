@@ -9,7 +9,11 @@ total extinction, and metallicity, along with the :ref:`atmo_models`,
 :ref:`evo_models`, and :ref:`ext_law`. 
 
 If the IsochronePhot sub-class is used then synthetic photometry
-will be produced. The :ref:`filters` are defined as additional inputs.
+will be produced. The :ref:`filters` are defined as additional
+inputs. The output photometry is in Vega mags by default (and is always
+saved to the iso file in Vega mag), but the user
+can opt to return the IsochronePhot object in AB or ST mags. Either way,
+the magnitude system is indicated in the MAGSYS isochrone table metadata.
 
 An example of making an IsochronePhot object::
 
@@ -76,10 +80,9 @@ Tips and Tricks: The IsochronePhot Object
 
   * **WARNING**: When IsochronePhot checks to see if the desired
     isochrone table already exists, it checks all isochrone properties
-    except for the photometric filters (evolution models, atmosphere
-    models, and reddening law are encoded in the table meta-data).
+    (evolution models, atmosphere models, and reddening law are encoded in the table meta-data).
     If any of these parameters do not match, then the isochrone will
-    be re-calculated.
+    be re-calculated. 
 
     However, to keep the isochrone filenames reasonable, only the
     age, extinction, distance, and metallicity are encoded in the
@@ -87,17 +90,17 @@ Tips and Tricks: The IsochronePhot Object
     reddening law have changed, the original file will be overwritten
     by the new isochrone.
 
-    *To avoid files from being unintentially overwritten, we recommend
+    *To avoid files from being unintentionally overwritten, we recommend
     that users specify different iso_dir paths when making isochrones
     with different evolution models, atmosphere models, or reddening
     laws.*
-    
-  * **WARNING**: IsochronePhot does not check existing
-    isochrone tables to see if the photometric filters match
-    those specified by the user. *So, if the user wishes to generate an
-    isochrone with different filters, we recommend either using a
-    different iso_dir path or setting the keyword recomp=True (see
-    docs below).*
+
+* For external evolution models (i.e. COSMIC), you should use 
+  IsochronePhotExternalEvolution
+  instead of IsochronePhot. This is because those evolution models do not have isochrones but
+  instead evolve the stars externally. The first time you run a new AKs, metallicity, or distance,
+  this will take ~10-20 mins because it is creating a new atmosphere grid. This table is saved in the 
+  specified iso_dir, under the filename atm_<aks>_<dist>_<z>.fits.
 
 Base Isochrone Class
 ----------------------------
@@ -112,3 +115,17 @@ Isochrone Sub-classes
 .. autoclass:: synthetic.IsochronePhot
 	       :show-inheritance:
 		:members: make_photometry, plot_CMD, plot_mass_magnitude
+
+.. autoclass:: synthetic.IsochronePhotExternalEvolution
+	       :show-inheritance:
+		:members: make_photometry, plot_CMD, plot_mass_magnitude
+
+
+Photometry Conversion Functions
+-----------------------------
+.. _phot_conversions:
+
+.. autofunction:: synthetic.calc_ab_vega_filter_conversion
+
+.. autofunction:: synthetic.calc_st_vega_filter_conversion
+

@@ -29,7 +29,7 @@ def get_nirc2_filt(name):
 
     while len(idx) != 0:
         wavelength[idx+1] += 1.0e-8
-        
+
         diff = np.diff(wavelength)
         idx = np.where(diff <= 0)[0]
         #print( 'Duplicate entry loop' )
@@ -68,7 +68,7 @@ def get_2mass_filt(name):
                                            name='2MASS_{0}'.format(name))
 
     return spectrum
-    
+
 
 def get_vista_filt(name):
     """
@@ -79,21 +79,21 @@ def get_vista_filt(name):
         t = Table.read('{0}/vista/VISTA_Filters_at80K_forETC_{1}.dat'.format(filters_dir, name),
                            format='ascii')
     except:
-        raise ValueError('Could not find VISTA filter file {0}/vista/VISTA_Filters_at80K_forETC_{1}.dat'.format(filters_dir, name))    
+        raise ValueError('Could not find VISTA filter file {0}/vista/VISTA_Filters_at80K_forETC_{1}.dat'.format(filters_dir, name))
 
    # Wavelength must be in angstroms, transmission in fraction
     wave = t['col1'] * 10
     trans = t['col2'] * 0.01
-    
+
     # Change any negative numbers to 0, as well as anything shortward
     # of 0.4 microns or longward of 2.9 microns
     # (no VISTA filter transmissions beyond these boundaries)
     bad = np.where( (trans < 0) | (wave < 4000) | (wave > 29000) )
     trans[bad] = 0
-    
+
     # Now we can define the VISTA filter bandpass objects
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='VISTA_{0}'.format(name))
-    
+
     return spectrum
 
 def get_decam_filt(name):
@@ -103,30 +103,26 @@ def get_decam_filt(name):
     # Read in filter info
     try:
         t = Table.read('{0}/decam/DECam_filters.txt'.format(filters_dir), format='ascii')
-        t.rename_column('Y', 'y')
-        
-        cols = np.array(t.keys())
-        idx = np.where(cols == name)[0][0]
 
-        trans = t[cols[idx]]
+        trans = t[name]
     except:
-        raise ValueError('Could not find DECAM filter {0} in {1}/decam/DECam_filters.txt'.format(name, filters_dir))         
+        if name=='y':
+            raise ValueError('DECam has a /"Y/" filter, not /"y/". The /"y/" in SPISEA <v3.0 was a bug.')
+        else:
+            raise ValueError('Could not find DECAM filter {0} in {1}/decam/DECam_filters.txt'.format(name, filters_dir))
 
-    # Limit to unmasked regions only
-    mask = np.ma.getmask(trans)
-    good = np.where(mask == False)
-    
+    # Don't allow negative transmission
+    trans[trans<0] = 0.0
+
     # Convert wavelengths from nm to angstroms, while eliminating masked regions
-    wave = t['wavelength'][good] * 10.
-    trans = trans[good]
-    wave = np.ma.filled(wave)
-    trans = np.ma.filled(trans)
+    wave = t['wavelength'] * 10.
+    trans = trans
 
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='decam_{0}'.format(name))
 
     return spectrum
 
-def get_PS1_filt(name):  
+def get_PS1_filt(name):
     """
     Define PS1 filter as pysynphot object
     """
@@ -139,17 +135,18 @@ def get_PS1_filt(name):
         t.rename_column('col5', 'i')
         t.rename_column('col6', 'z')
         t.rename_column('col7', 'y')
+        t.rename_column('col8', 'w')
 
         cols = np.array(t.keys())
         idx = np.where(cols == name)[0][0]
 
         trans = t[cols[idx]]
     except:
-        raise ValueError('Could not find PS1 filter {0} in {1}/ps1'.format(name, filters_dir))         
+        raise ValueError('Could not find PS1 filter {0} in {1}/ps1'.format(name, filters_dir))
 
     # Convert wavelengths from nm to angstroms
     wave = t['wave'] * 10.
-    
+
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='ps1_{0}'.format(name))
 
     return spectrum
@@ -161,7 +158,7 @@ def get_jwst_filt(name):
     try:
         t = Table.read('{0}/jwst/{1}.txt'.format(filters_dir, name), format='ascii')
     except:
-        raise ValueError('Could not find JWST filter {0} in {1}/jwst'.format(name, filters_dir))         
+        raise ValueError('Could not find JWST filter {0} in {1}/jwst'.format(name, filters_dir))
 
     # Convert wavelengths to angstroms
     wave = t['microns'] * 10**4.
@@ -170,10 +167,10 @@ def get_jwst_filt(name):
     # Change any negative numbers to 0
     bad = np.where(trans < 0)
     trans[bad] = 0
-    
+
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='jwst_{0}'.format(name))
 
-    return spectrum    
+    return spectrum
 
 def get_Johnson_Glass_filt(name):
     """
@@ -182,7 +179,7 @@ def get_Johnson_Glass_filt(name):
     try:
         t = Table.read('{0}/Johnson_Glass/{1}.txt'.format(filters_dir, name), format='ascii')
     except:
-        raise ValueError('Could not find Johnson-Glass filter {0} in {1}/Johnson_Glass'.format(name, filters_dir))         
+        raise ValueError('Could not find Johnson-Glass filter {0} in {1}/Johnson_Glass'.format(name, filters_dir))
 
     # Convert wavelengths to angstroms
     wave = t['col1'] * 10.
@@ -191,10 +188,10 @@ def get_Johnson_Glass_filt(name):
     # Change any negative numbers to 0
     bad = np.where(trans < 0)
     trans[bad] = 0
-    
+
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='jg_{0}'.format(name))
 
-    return spectrum    
+    return spectrum
 
 def get_nirc1_filt(name):
     """
@@ -203,12 +200,12 @@ def get_nirc1_filt(name):
     try:
         t = Table.read('{0}/nirc1/{1}.txt'.format(filters_dir, name), format='ascii')
     except:
-        raise ValueError('Could not find NIRC1 filter {0} in {1}/nirc1'.format(name, filters_dir))         
+        raise ValueError('Could not find NIRC1 filter {0} in {1}/nirc1'.format(name, filters_dir))
 
     # Convert wavelengths to angstroms
     wave = t['col1'] * 10**4
     trans = t['col2']
-    
+
     # Lets fix wavelength array for duplicate values or negative vals;
     # delete these entries
     diff = np.diff(wave)
@@ -222,14 +219,14 @@ def get_nirc1_filt(name):
 
         diff = np.diff(wave)
         idx = np.where(diff <= 0)[0]
-        
+
     # Change any negative transmission vals to 0
     bad = np.where(trans < 0)
     trans[bad] = 0
 
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='nirc1_{0}'.format(name))
 
-    return spectrum    
+    return spectrum
 
 def get_ctio_osiris_filt(name):
     """
@@ -238,7 +235,7 @@ def get_ctio_osiris_filt(name):
     try:
         t = Table.read('{0}/CTIO_OSIRIS/{1}.txt'.format(filters_dir, name), format='ascii')
     except:
-        raise ValueError('Could not find CTIO/OSIRIS filter {0} in {1}/CTIO_OSIRIS'.format(name, filters_dir))         
+        raise ValueError('Could not find CTIO/OSIRIS filter {0} in {1}/CTIO_OSIRIS'.format(name, filters_dir))
 
     # Convert wavelengths to angstroms
     wave = t['col1'] * 10**4
@@ -247,7 +244,7 @@ def get_ctio_osiris_filt(name):
     # Change any negative numbers to 0
     bad = np.where(trans < 0)
     trans[bad] = 0
-    
+
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='ctio_osiris_{0}'.format(name))
 
     return spectrum
@@ -259,7 +256,7 @@ def get_naco_filt(name):
     try:
         t = Table.read('{0}/naco/{1}.dat'.format(filters_dir, name), format='ascii')
     except:
-        raise ValueError('Could not find NACO filter {0} in {1}/naco'.format(name, filters_dir))         
+        raise ValueError('Could not find NACO filter {0} in {1}/naco'.format(name, filters_dir))
 
     # Convert wavelengths to angstroms
     wave = t['col1'] * 10**4
@@ -268,7 +265,7 @@ def get_naco_filt(name):
     # Change any negative numbers to 0
     bad = np.where(trans < 0)
     trans[bad] = 0
-    
+
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='naco_{0}'.format(name))
 
     return spectrum
@@ -282,7 +279,7 @@ def get_ubv_filt(name):
     except:
         raise ValueError('Could not find ubv filter {0} in {1}/ubv'.format(name, filters_dir))
 
-    # Convert wavelength from nm to angstroms 
+    # Convert wavelength from nm to angstroms
     wave = t[t.keys()[0]] * 10.
     # Convert transmission to ratio (from percent)
     trans = t[t.keys()[1]] / 100.
@@ -291,7 +288,28 @@ def get_ubv_filt(name):
     bad = np.where(trans < 0)
     trans[bad] = 0
 
+    if name=='I':
+        warnings.warn("Filter profile ubv,I uses the Johnson filter which extends further to long wavelengths than Cousins. "
+            "Here, it is improperly cut off at 1.1 microns where transmission is ~20%. "
+            "Consider using the Bessell UBVRI (bessell,I) filter system instead.")
+
     spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='ubv_{0}'.format(name))
+
+    return spectrum
+
+def get_bessell_filt(name):
+    """
+    Define ubv (Johnson-Cousin filters, as defined in Bessell 1990) as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/bessell/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find bessell filter {0} in {1}/bessell'.format(name, filters_dir))
+
+    wave = t[t.keys()[0]] 
+    trans = t[t.keys()[1]]
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='bessell_{0}'.format(name))
 
     return spectrum
 
@@ -336,17 +354,14 @@ def get_keck_osiris_filt(name):
 def get_gaia_filt(version, name):
     """
     Define Gaia filters as pysynphot object.
-    To avoid confusion, we will only support 
-    the revised DR2 zeropoints from 
-    Evans+18.
 
-    version: specify dr1, dr2, or dr2_rev
+    version: specify dr1, dr2, dr2_rev, or edr3
     name: filter name
     """
-    # Assert that we are using the revised DR2 zeropoints
-    if version != 'dr2_rev':
-        msg = 'Gaia version {0} not supported, use dr2_rev instead'.format(version)
-        raise ValueError(msg)
+    # Warn if not using latest version
+    if version != 'edr3':
+        msg = 'Gaia version {0} not recommended, use edr3 for the latest version'.format(version)
+        warnings.warn(msg)
 
     # Set the filter directory
     if version == 'dr1':
@@ -355,9 +370,11 @@ def get_gaia_filt(version, name):
         path = '{0}/gaia/dr2/'.format(filters_dir)
     elif version == 'dr2_rev':
         path = '{0}/gaia/dr2_rev/'.format(filters_dir)
+    elif version == 'edr3':
+        path = '{0}/gaia/edr3/'.format(filters_dir)
     else:
-        raise ValueError('GAIA filter version {0} not understood. Please use dr1, dr2, or dr2_rev'.format(version))
-        
+        raise ValueError('GAIA filter version {0} not understood. Please use dr1, dr2, dr2_rev, or edr3'.format(version))
+
     # Get the filter info
     try:
         t = Table.read('{0}/Gaia_passbands.txt'.format(path), format='ascii')
@@ -370,17 +387,14 @@ def get_gaia_filt(version, name):
             t.rename_column('col4', 'Gbp')
             t.rename_column('col6', 'Grp')
 
-        cols = np.array(t.keys())
-        idx = np.where(cols == name)[0][0]
-
-        trans = t[cols[idx]]
+        trans = t[name]
 
         # Change 99 values where filters are undefined into 0, to ensure that
         # it doesn't mess up our flux values
         bad = np.where(trans > 90)
         trans[bad] = 0
     except:
-        raise ValueError('Could not find Gaia filter {0}'.format(name))   
+        raise ValueError('Could not find Gaia filter {0} for version {1}'.format(name, version))
 
     # Convert wavelengths to angstroms (from nm)
     wave = t['LAMBDA'] * 10
@@ -465,10 +479,147 @@ def get_euclid_filt(name):
     transmission = t[t.keys()[1]]
 
     # Convert wavelength to Angstroms
-    wavelength = wavelength * 10
+    if name.lower() != 'vis':
+        wavelength = wavelength * 10
 
     # Make spectrum object
     spectrum = pysynphot.ArrayBandpass(wavelength, transmission, waveunits='angstrom',
                                        name='euclid_{0}'.format(name))
+
+    return spectrum
+
+def get_nsfcam_filt(name):
+    """
+    Define irtf nsfcam filters as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/nsfcam/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find nsfcam filter {0} in {1}/nsfcam'.format(name, filters_dir))
+
+    # Wavelength already in angstrom and and transmission in fraction
+    wave = t['col1']
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='nsfcam_{0}'.format(name))
+
+    return spectrum
+
+def get_tess_filt(name):
+    """
+    Define the TESS filter as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/tess/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find tess filter {0} in {1}/tess'.format(name, filters_dir))
+
+    # Wavelength from nanometers to angstroms and and transmission in fraction
+    wave = t['col1']*10
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='tess,{0}'.format(name))
+
+    return spectrum
+
+def get_washington_filt(name):
+    """
+    Define the Washington filters as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/washington/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find washington filter {0} in {1}/washington'.format(name, filters_dir))
+
+    # Wavelength from nanometers to angstroms and and transmission in fraction
+    wave = t['col1']*10
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='washington,{0}'.format(name))
+
+    return spectrum
+
+def get_hipparcos_filt(name):
+    """
+    Define the Hipparcos filter as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/hipparcos/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find hipparcos filter {0} in {1}/hipparcos'.format(name, filters_dir))
+
+    # Wavelength in angstroms and and transmission in fraction
+    wave = t['col1']
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='hipparcos,{0}'.format(name))
+
+    return spectrum
+
+def get_tycho_filt(name):
+    """
+    Define the Tycho filters as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/tycho/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find tycho filter {0} in {1}/tycho'.format(name, filters_dir))
+
+    # Wavelength in angstroms and and transmission in fraction
+    wave = t['col1']
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='tycho,{0}'.format(name))
+
+    return spectrum
+
+def get_kepler_filt(name):
+    """
+    Define the Kepler filters as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/kepler/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find kepler filter {0} in {1}/kepler'.format(name, filters_dir))
+
+    # Wavelength in angstroms and and transmission in fraction
+    wave = t['col1']
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='kepler,{0}'.format(name))
+
+    return spectrum
+
+def get_ogle_filt(name):
+    """
+    Define the OGLE filters as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/ogle/{1}.dat'.format(filters_dir, name), format='ascii')
+    except:
+        raise ValueError('Could not find ogle filter {0} in {1}/ogle'.format(name, filters_dir))
+
+    # Wavelength in nm->angstroms and and transmission in percent->fraction
+    wave = np.flip(t['col1'])*10
+    trans = np.flip(t['col2'])/100
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='ogle,{0}'.format(name))
+
+    return spectrum
+
+def get_subaru_filt(instrument, name):
+    """
+    Define the subaru filters as pysynphot object
+    """
+    try:
+        t = Table.read('{0}/subaru/{1}/{2}.dat'.format(filters_dir, instrument, name), format='ascii')
+    except:
+        raise ValueError('Could not find Subaru filter {0} in {1}/subaru/{2}'.format(name, filters_dir, instrument))
+
+    # Wavelength in nm->angstroms and and transmission in percent->fraction
+    wave = t['col1']
+    trans = t['col2']
+
+    spectrum = pysynphot.ArrayBandpass(wave, trans, waveunits='angstrom', name='subaru,{0},{1}'.format(instrument, name))
 
     return spectrum
